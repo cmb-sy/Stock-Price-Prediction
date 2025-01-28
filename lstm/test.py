@@ -17,9 +17,6 @@ from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
-import warnings
-warnings.simplefilter('ignore')
-plt.style.use("ggplot")
 
 # ---標準入力処理関連---
 def get_input(prompt, default_value):
