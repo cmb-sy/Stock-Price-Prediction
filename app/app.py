@@ -2,7 +2,7 @@ from flask import Flask, render_template, request
 import io
 import base64
 import matplotlib.pyplot as plt
-from datetime import datetime
+from datetime import datetime, timedelta
 import yfinance as yf
 import numpy as np
 import torch
@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
 from tqdm import tqdm
+import pandas as pd
 
 app = Flask(__name__)
 
@@ -25,12 +26,16 @@ def index():
         from_year = int(request.form.get("from_year"))
         ref_days = int(request.form.get("ref_days"))
         code = request.form.get("code")
-        plot_url = run_model(from_year, ref_days, code)
-        return render_template("plot.html", plot_url=plot_url)
+        plot_url, test_score, company_name = run_model(from_year, ref_days, code)
+        return render_template("plot.html", plot_url=plot_url, test_score=test_score, company_name=company_name)
     return render_template("index.html")
 
 def run_model(from_year, ref_days, code):
     code_dl = code + ".t"
+
+    # ---企業名の取得---
+    ticker = yf.Ticker(code_dl)
+    company_name = ticker.info['longName']
 
     # ---2.データセットの抽出---
     end_date = datetime.now()  # 直近の日付を計算
@@ -131,15 +136,37 @@ def run_model(from_year, ref_days, code):
     valid = data[training_data_len:].copy()
     valid.loc[:, 'Predictions'] = predictions
 
-    # ---8.予測結果のプロット---
+    # ---8.未来の予測---
+    future_days = 30  # 予測したい未来の日数
+    last_data = scaled_data[-ref_days:]  # 最後のref_days日分のデータを取得
+
+    future_predictions = []
+    model.eval()
+    with torch.no_grad():
+        for _ in range(future_days):
+            x_future = torch.tensor(last_data.reshape(1, ref_days, 1), dtype=torch.float32)
+            future_pred = model(x_future).numpy()
+            future_predictions.append(future_pred[0, 0])
+            last_data = np.append(last_data[1:], future_pred)
+
+    future_predictions = scaler.inverse_transform(np.array(future_predictions).reshape(-1, 1))
+
+    last_date = df.index[-1]
+    future_dates = [last_date + timedelta(days=i) for i in range(1, future_days + 1)]
+
+    future_df = pd.DataFrame(data=future_predictions, index=future_dates, columns=['Predictions'])
+
+    # ---9.予測結果のプロット---
     plt.switch_backend('Agg')
     plt.figure(figsize=(16, 6))
     plt.title('LSTM Model')
     plt.xlabel('Date', fontsize=18)
     plt.ylabel('Close Price of Lasertec', fontsize=18)
-    plt.plot(train)
-    plt.plot(valid[['Predictions']])
-    plt.legend(['Train', 'Real', 'Prediction'], loc='lower right')
+    plt.plot(train, label='Train')
+    plt.plot(valid, label='Real')
+    plt.plot(valid['Predictions'], label='Prediction')
+    plt.plot(future_df, label='Future Prediction', linestyle='dashed')
+    plt.legend(loc='lower right')
 
     # 画像を保存
     img = io.BytesIO()
@@ -147,7 +174,7 @@ def run_model(from_year, ref_days, code):
     img.seek(0)
     plot_url = base64.b64encode(img.getvalue()).decode()
 
-    return plot_url
+    return plot_url, test_score, company_name
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -5,7 +5,10 @@
     <title>Plot</title>
   </head>
   <body>
-    <h1>Plot Result</h1>
+    <h1>Plot Result for {{ company_name }}</h1>
+    <p>Test Score (RMSE): {{ test_score }}</p>
     <img src="data:image/png;base64,{{ plot_url }}" alt="Plot" />
+    <br />
+    <a href="/index">Back to Index</a>
   </body>
 </html>
