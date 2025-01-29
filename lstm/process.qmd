@@ -12,7 +12,7 @@ editor_options:
 jupyter: python3
 ---
 
-# パッケージの読み込み
+## パッケージの読み込み
 
 ```{python}
 import torch
@@ -57,25 +57,31 @@ code = '9861'
 ## データの前処理
 ```{python}
 data = df["Close"] ##　Closeコラム（取引終了時の株価）のみ
+
+dataset = data.values
+
 scaler = MinMaxScaler(feature_range=(0, 1))
-scaled_data = scaler.fit_transform(data.values)
+scaled_data = scaler.fit_transform(dataset)
 print("scaled_data",scaled_data)
 ```
 
 ## 訓練データと検証データの分割
 - スケーリングされたデータの最初の70%をトレーニングデータとして抽出
+  
 - scaled_dataのインデックス0からtraining_data_lenまでのデータをtrain_dataに格納します。
+  
+- x_train (696, 60, 1)で、1つのデータあたり60個分の過去データを結びつけている。
 
 ```{python}
-training_data_len = int(np.ceil(len(dataset) * 0.7))
+training_data_len = int(np.ceil(len(dataset)))
+# training_data_len = int(np.ceil(len(dataset) * 0.7))
 train_data = scaled_data[0:int(training_data_len), :]
-```
-
-```{python}
-# ---5.訓練データの作成---
+`
 x_train = []
 y_train = []
 
+print("変換前x_train", train_data.shape)
+print("変換前x_train", train_data)
 for i in tqdm(range(ref_days, len(train_data))):
    x_train.append(train_data[i-ref_days:i, 0])
    y_train.append(train_data[i, 0])
@@ -91,20 +97,127 @@ x_train = np.array(x_train_padded)
 y_train = np.array(y_train)
 
 x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+
+print("x_train",x_train.shape)
+print("x_train",x_train)
+
+# データを変換
+# データをTensorに変換
+x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
+y_train_tensor = torch.tensor(y_train, dtype=torch.float32)
+
+# DataLoaderの作成
+train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
+train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+
 ```
 
-```{python}
+## モデル構築
+### 今回のLSTM
+入力データ (696, 60, 1)
+       ↓
+  ┌─────────────────────┐
+  │      LSTM1          │   → 出力形状：(696, 60, 128)
+  └─────────────────────┘
+       ↓
+  ┌─────────────────────┐
+  │      LSTM2          │   → 出力形状：(696, 60, 64)
+  └─────────────────────┘
+       ↓
+  最後のタイムステップを取得: `x[:, -1, :]`  → 出力形状：(696, 64)
+       ↓
+  ┌─────────────────────┐
+  │     FC1 (Linear)    │   → 出力形状：(696, 25)
+  └─────────────────────┘
+       ↓
+  ┌─────────────────────┐
+  │     FC2 (Linear)    │   → 出力形状：(696, 1)
+  └─────────────────────┘
+       ↓
+   最終出力（予測値）
 
+- LSTM1層 (128隠れユニット)
+  - 最初のLSTM層がデータを受け取り、出力の次元が128に変換される。これにより、過去の60タイムステップの情報を基に128次元の隠れ状態が作られる。
+
+- LSTM2層 (64隠れユニット)
+  - 128次元の出力が次のLSTM層に渡され、64次元に変換される。2層目のLSTM層は、さらに時系列のパターンを学習する。
+
+- 最後のタイムステップを選択
+  - 出力が (batch_size, sequence_length, features) の形状で返されますが、予測に使うのは最後のタイムステップの出力です。つまり、60番目のタイムステップ（x[:, -1, :]）のデータを選びます。このデータは次元が64で、次の層に渡されます。
+
+- FC1
+  - 64次元のデータを25次元に圧縮します。全結合層によって、情報が圧縮され、学習されます。
+- FC2
+  - 最後に25次元のデータを1次元に戻し、最終的な予測値を得ます。これがモデルの出力になります。
+
+```{python}
+class LSTMModel(nn.Module):
+    def __init__(self):
+        super(LSTMModel, self).__init__()
+        self.lstm1 = nn.LSTM(input_size=1, hidden_size=128, batch_first=True)
+        self.lstm2 = nn.LSTM(input_size=128, hidden_size=64, batch_first=True)
+        self.fc1 = nn.Linear(64, 25)
+        self.fc2 = nn.Linear(25, 1)
+
+    def forward(self, x):
+        x, _ = self.lstm1(x)
+        x, _ = self.lstm2(x)
+        x = x[:, -1, :]  # 最後のタイムステップの出力を使用
+        x = self.fc1(x)
+        x = self.fc2(x)
+        return x
+
+model = LSTMModel()
+# 平均二乗誤差（MSE）損失関数
+criterion = nn.MSELoss()
+# Adamを使って、モデルのパラメータを更新する設定
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 ```
 
-```{python}
+## モデルの学習
 
+```{python}
+model.train()
+for epoch in range(1):  # 1エポック（反復）で学習を行う
+    for x_batch, y_batch in tqdm(train_loader, desc=f"Epoch {epoch+1}"):
+        # バッチ毎にデータを取り出し、学習を行う
+        optimizer.zero_grad()  # 勾配をゼロにリセット
+        outputs = model(x_batch)  # モデルによる予測
+        loss = criterion(outputs, y_batch)  # 予測と実際の値との損失を計算
+        loss.backward()  # 逆伝播して勾配を計算
+        optimizer.step()  # 最適化アルゴリズムを用いてパラメータを更新
 ```
 
-```{python}
+## テストデータの作成
 
+```{python}
+test_data = scaled_data[training_data_len - ref_days: , :]
+
+x_test = []
+y_test = dataset[training_data_len:, :]
+for i in range(ref_days, len(test_data)):
+   x_test.append(test_data[i-ref_days:i, 0])
+x_test = np.array(x_test)
+x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
+
+x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
 ```
 
+## モデルの予測
 ```{python}
+model.eval()
+with torch.no_grad():
+    predictions = model(x_test_tensor).numpy()
 
+# MinMaxScalerやStandardScalerのスケールを、最初のスケールへ戻す
+predictions = scaler.inverse_transform(predictions)
+
+test_score = np.sqrt(mean_squared_error(y_test, predictions))
+
+train = data[:training_data_len]
+valid = data[training_data_len:]
+valid['Predictions'] = predictions
+
+print(valid.columns)
+print(train.columns)
 ```

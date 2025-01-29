@@ -1,7 +1,18 @@
 <!DOCTYPE html>
-<html>
-  <head> </head>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Stock Price Prediction</title>
+  </head>
   <body>
-    <h1>Webアプリ初心者のFlaskチュートリアル</h1>
+    <form method="post" action="/index">
+      <label for="from_year">From Year:</label>
+      <input type="number" id="from_year" name="from_year" value="3" /><br />
+      <label for="ref_days">Reference Days:</label>
+      <input type="number" id="ref_days" name="ref_days" value="60" /><br />
+      <label for="code">Code:</label>
+      <input type="text" id="code" name="code" value="9861" /><br />
+      <input type="submit" value="Submit" />
+    </form>
   </body>
 </html>
