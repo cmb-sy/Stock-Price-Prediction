@@ -23,11 +23,14 @@ def hello():
 @app.route("/index", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        from_year = int(request.form.get("from_year"))
-        ref_days = int(request.form.get("ref_days"))
-        code = request.form.get("code")
-        plot_url, test_score, company_name = run_model(from_year, ref_days, code)
-        return render_template("plot.html", plot_url=plot_url, test_score=test_score, company_name=company_name)
+        try:
+            from_year = int(request.form.get("from_year"))
+            ref_days = int(request.form.get("ref_days"))
+            code = request.form.get("code")
+            plot_url, test_score, company_name = run_model(from_year, ref_days, code)
+            return render_template("plot.html", plot_url=plot_url, test_score=test_score, company_name=company_name)
+        except ValueError as e:
+            return render_template("index.html", error=str(e))
     return render_template("index.html")
 
 def run_model(from_year, ref_days, code):
@@ -35,9 +38,11 @@ def run_model(from_year, ref_days, code):
 
     # ---企業名の取得---
     ticker = yf.Ticker(code_dl)
+    if 'longName' not in ticker.info:
+        raise ValueError(f"データを取得できませんでした: {code_dl}")
     company_name = ticker.info['longName']
 
-    # ---2.データセットの抽出---
+# ---2.データセットの抽出---
     end_date = datetime.now()  # 直近の日付を計算
     start_date = datetime(end_date.year - from_year, 1, 1)  # from_year年前の1月1日を設定
     df = yf.download(code_dl, start=start_date, end=end_date, interval="1d")
