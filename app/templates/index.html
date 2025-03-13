@@ -13,38 +13,42 @@
         align-items: center;
         height: 100vh;
         margin: 0;
+        flex-direction: column; /* 縦方向に配置 */
       }
 
       form {
         background: #fff;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        width: 500px; /* 入力フォームの幅を広げる */
       }
 
       label {
         display: block;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
         font-weight: bold;
+        font-size: 18px;
       }
 
       input[type="number"],
       input[type="text"] {
         width: 100%;
-        padding: 8px;
-        margin-bottom: 10px;
+        padding: 12px;
+        margin-bottom: 15px;
         border: 1px solid #ccc;
-        border-radius: 4px;
+        border-radius: 6px;
+        font-size: 16px;
       }
 
       input[type="submit"] {
         background-color: #3498db;
         color: white;
-        padding: 10px 20px;
+        padding: 12px 24px;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
-        font-size: 16px;
+        font-size: 18px;
       }
 
       input[type="submit"]:hover {
@@ -52,18 +56,23 @@
       }
 
       /* ローディングサークルのスタイル */
-      .loading {
+      .loading-container {
         display: none;
         position: fixed;
         left: 50%;
         top: 50%;
         transform: translate(-50%, -50%);
+        text-align: center;
+      }
+
+      .loading {
         border: 16px solid #f3f3f3;
         border-radius: 50%;
         border-top: 16px solid #3498db;
         width: 120px;
         height: 120px;
         animation: spin 2s linear infinite;
+        margin-bottom: 20px;
       }
 
       @keyframes spin {
@@ -77,37 +86,41 @@
 
       /* 進捗状況のスタイル */
       .progress {
-        display: none;
-        position: fixed;
-        left: 50%;
-        top: 60%;
-        transform: translate(-50%, -50%);
-        font-size: 18px;
+        font-size: 20px;
         color: #3498db;
       }
 
       /* エラーメッセージのスタイル */
       .error {
         color: red;
-        margin-top: 10px;
+        margin-top: 15px;
+        font-size: 16px;
       }
     </style>
   </head>
   <body>
+    <h1>企業情報を入力してください</h1>
     <form method="post" action="/index" onsubmit="showLoading()">
-      <label for="from_year">From Year:</label>
-      <input type="number" id="from_year" name="from_year" value="3" /><br />
-      <label for="ref_days">Reference Days:</label>
-      <input type="number" id="ref_days" name="ref_days" value="60" /><br />
-      <label for="code">Code:</label>
-      <input type="text" id="code" name="code" value="9861" /><br />
-      <input type="submit" value="Submit" />
+      <label for="from_year">
+        何年前からデータを参考にするか
+        <input type="number" id="from_year" name="from_year" value="3" /><br />
+      </label>
+      <label for="ref_days">
+        参考にする日数
+        <input type="number" id="ref_days" name="ref_days" value="60" /><br />
+      </label>
+      <label for="code">
+        企業コード
+        <input type="text" id="code" name="code" value="9861" /><br />
+      </label>
+      <input type="submit" value="株価予測する" />
     </form>
 
     <!-- ローディングサークル -->
-    <div class="loading" id="loading"></div>
-    <!-- 進捗状況 -->
-    <div class="progress" id="progress">処理中...</div>
+    <div class="loading-container" id="loading-container">
+      <div class="loading" id="loading"></div>
+      <div class="progress" id="progress">処理中...</div>
+    </div>
 
     <!-- エラーメッセージ -->
     {% if error %}
@@ -116,8 +129,7 @@
 
     <script>
       function showLoading() {
-        document.getElementById("loading").style.display = "block";
-        document.getElementById("progress").style.display = "block";
+        document.getElementById("loading-container").style.display = "block";
       }
     </script>
   </body>
