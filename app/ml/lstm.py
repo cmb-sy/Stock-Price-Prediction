@@ -1,3 +1,4 @@
+import time
 import io
 import base64
 import matplotlib.pyplot as plt
@@ -12,19 +13,21 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
 from tqdm import tqdm
 import pandas as pd
+import matplotlib.font_manager as fm
 
 def run_model(from_year, ref_days, code):
-    code_dl = code + ".t"
-
+    code_dl = code + ".T"
+    # code_dl = code
     # ---企業名の取得---
     ticker = yf.Ticker(code_dl)
-    if 'longName' not in ticker.info:
-        raise ValueError(f"データを取得できませんでした: {code_dl}")
-    company_name = ticker.info['longName']
+    print("ticker", ticker)
+    company_name = ticker.info['shortName'] if 'shortName' in ticker.info else 'Unknown'
+    retries = 5
 
-# ---2.データセットの抽出---
+    # ---2.データセットの抽出---
     end_date = datetime.now()  # 直近の日付を計算
     start_date = datetime(end_date.year - from_year, 1, 1)  # from_year年前の1月1日を設定
+    print("testtest",code_dl)
     df = yf.download(code_dl, start=start_date, end=end_date, interval="1d")
 
     # ---3.データの前処理---
@@ -144,9 +147,8 @@ def run_model(from_year, ref_days, code):
     # ---9.予測結果のプロット---
     plt.switch_backend('Agg')
     plt.figure(figsize=(16, 6))
-    plt.title('LSTM Model')
-    plt.xlabel('Date', fontsize=18)
-    plt.ylabel('Close Price of Lasertec', fontsize=18)
+    plt.xlabel('day', fontsize=18)
+    plt.ylabel('stock price', fontsize=18)
     plt.plot(train, label='Train')
     plt.plot(valid, label='Real')
     plt.plot(valid['Predictions'], label='Prediction')
