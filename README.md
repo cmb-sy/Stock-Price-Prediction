@@ -11,7 +11,7 @@ This application predicts future stock prices based on historical stock data. It
    ```
 2. Install the required dependencies:
    ```bash
-   conda install --yes --file requirements.txt
+   conda install requirements.txt
    ```
 3. Run the application:
    ```bash
@@ -30,3 +30,5 @@ Incorporate additional parameters such as revenue, employee count, PBR, PER, and
 Extract relevant company information from the latest news and leverage large language models (LLMs) to enhance prediction capabilities.
 
 ## Demo
+https://github.com/user-attachments/assets/0cdd13b7-fd73-445f-8825-ece997e34f7d
+
