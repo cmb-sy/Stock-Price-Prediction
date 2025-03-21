@@ -19,13 +19,11 @@ def run_model(from_year, ref_days, code):
     code_dl = code + ".T"
     # ---企業名の取得---
     ticker = yf.Ticker(code_dl)
-    print("ticker", ticker)
     company_name = ticker.info['shortName'] if 'shortName' in ticker.info else 'Unknown'
     retries = 5
 
     end_date = datetime.now() 
     start_date = datetime(end_date.year - from_year, 1, 1)
-    print("testtest",code_dl)
     df = yf.download(code_dl, start=start_date, end=end_date, interval="1d")
 
     data = df["Close"]  # Closeコラム（取引終了時の株価）のみ
@@ -137,7 +135,7 @@ def run_model(from_year, ref_days, code):
     plt.xlabel('day', fontsize=18)
     plt.ylabel('stock price', fontsize=18)
     plt.plot(train, label='Train')
-    plt.plot(valid, label='Real')
+    plt.plot(valid[code_dl], label='Reals')
     plt.plot(valid['Predictions'], label='Prediction')
     plt.plot(future_df, label='Future Prediction', linestyle='dashed')
     plt.legend(loc='lower right')
