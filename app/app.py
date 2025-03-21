@@ -5,11 +5,7 @@ from lstm import run_model
 
 app = Flask(__name__)
 
-@app.route("/")
-def hello():
-    return "Hello World"
-
-@app.route("/index", methods=["GET", "POST"])
+@app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
         try:
