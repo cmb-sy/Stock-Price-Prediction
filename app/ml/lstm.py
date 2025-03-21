@@ -17,30 +17,25 @@ import matplotlib.font_manager as fm
 
 def run_model(from_year, ref_days, code):
     code_dl = code + ".T"
-    # code_dl = code
     # ---企業名の取得---
     ticker = yf.Ticker(code_dl)
     print("ticker", ticker)
     company_name = ticker.info['shortName'] if 'shortName' in ticker.info else 'Unknown'
     retries = 5
 
-    # ---2.データセットの抽出---
-    end_date = datetime.now()  # 直近の日付を計算
-    start_date = datetime(end_date.year - from_year, 1, 1)  # from_year年前の1月1日を設定
+    end_date = datetime.now() 
+    start_date = datetime(end_date.year - from_year, 1, 1)
     print("testtest",code_dl)
     df = yf.download(code_dl, start=start_date, end=end_date, interval="1d")
 
-    # ---3.データの前処理---
     data = df["Close"]  # Closeコラム（取引終了時の株価）のみ
     dataset = data.values
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_data = scaler.fit_transform(dataset.reshape(-1, 1))
 
-    # ---4.訓練データと検証データの分割---
     training_data_len = int(np.ceil(len(dataset) * 0.7))
     train_data = scaled_data[0:int(training_data_len), :]
 
-    # ---5.訓練データの作成---
     x_train = []
     y_train = []
 
@@ -60,7 +55,6 @@ def run_model(from_year, ref_days, code):
 
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
 
-    # ---6.モデル構築---
     class LSTMModel(nn.Module):
         def __init__(self):
             super(LSTMModel, self).__init__()
@@ -72,7 +66,7 @@ def run_model(from_year, ref_days, code):
         def forward(self, x):
             x, _ = self.lstm1(x)
             x, _ = self.lstm2(x)
-            x = x[:, -1, :]  # 最後のタイムステップの出力を使用
+            x = x[:, -1, :]
             x = self.fc1(x)
             x = self.fc2(x)
             return x
@@ -81,15 +75,12 @@ def run_model(from_year, ref_days, code):
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    # データをTensorに変換
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
     y_train_tensor = torch.tensor(y_train, dtype=torch.float32)
 
-    # DataLoaderの作成
     train_dataset = TensorDataset(x_train_tensor, y_train_tensor)
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 
-    # モデルの学習
     model.train()
     for epoch in range(1):
         for x_batch, y_batch in tqdm(train_loader, desc=f"Epoch {epoch + 1}"):
@@ -99,7 +90,6 @@ def run_model(from_year, ref_days, code):
             loss.backward()
             optimizer.step()
 
-    # ---7.検証データの作成---
     test_data = scaled_data[training_data_len - ref_days:, :]
 
     x_test = []
@@ -111,7 +101,6 @@ def run_model(from_year, ref_days, code):
 
     x_test_tensor = torch.tensor(x_test, dtype=torch.float32)
 
-    # モデルの予測
     model.eval()
     with torch.no_grad():
         predictions = model(x_test_tensor).numpy()
@@ -124,9 +113,8 @@ def run_model(from_year, ref_days, code):
     valid = data[training_data_len:].copy()
     valid.loc[:, 'Predictions'] = predictions
 
-    # ---8.未来の予測---
-    future_days = 30  # 予測したい未来の日数
-    last_data = scaled_data[-ref_days:]  # 最後のref_days日分のデータを取得
+    future_days = 30
+    last_data = scaled_data[-ref_days:]
 
     future_predictions = []
     model.eval()
@@ -144,7 +132,6 @@ def run_model(from_year, ref_days, code):
 
     future_df = pd.DataFrame(data=future_predictions, index=future_dates, columns=['Predictions'])
 
-    # ---9.予測結果のプロット---
     plt.switch_backend('Agg')
     plt.figure(figsize=(16, 6))
     plt.xlabel('day', fontsize=18)
@@ -155,7 +142,6 @@ def run_model(from_year, ref_days, code):
     plt.plot(future_df, label='Future Prediction', linestyle='dashed')
     plt.legend(loc='lower right')
 
-    # 画像を保存
     img = io.BytesIO()
     plt.savefig(img, format='png')
     img.seek(0)

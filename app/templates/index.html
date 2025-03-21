@@ -99,19 +99,19 @@
     </style>
   </head>
   <body>
-    <h1>企業情報を入力してください</h1>
+    <h1>以下の項目を入力してください</h1>
     <form method="post" action="/" onsubmit="showLoading()">
-      <label for="from_year">
-        何年前からデータを参考にするか
-        <input type="number" id="from_year" name="from_year" value="3" /><br />
-      </label>
-      <label for="ref_days">
-        参考にする日数
-        <input type="number" id="ref_days" name="ref_days" value="60" /><br />
-      </label>
       <label for="code">
         企業コード
         <input type="text" id="code" name="code" value="9861" /><br />
+      </label>
+      <label for="from_year">
+        何年前からのデータを参考にするか
+        <input type="number" id="from_year" name="from_year" value="3" /><br />
+      </label>
+      <label for="ref_days">
+        予測日数
+        <input type="number" id="ref_days" name="ref_days" value="60" /><br />
       </label>
       <input type="submit" value="株価予測する" />
     </form>
