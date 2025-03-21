@@ -4,11 +4,16 @@ This application predicts future stock prices based on historical stock data. It
 
 ## How to Use
 
-1. Install the required dependencies:
+1. Create and activate the `conda` environment:
+   ```bash
+   conda create --name env
+   conda activate env
+   ```
+2. Install the required dependencies:
    ```bash
    conda install --yes --file requirements.txt
    ```
-2. Run the application:
+3. Run the application:
    ```bash
    python run.py
    ```
